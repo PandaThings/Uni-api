@@ -3,30 +3,30 @@
 # Multi-stage build for a lean, secure production image
 # ──────────────────────────────────────────────────────────────────────────────
 
-FROM node:22-alpine AS builder
-RUN npm install -g pnpm
+FROM node:22-bookworm-slim AS builder
+RUN corepack enable && corepack prepare pnpm@11.5.2 --activate
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy workspace config
-COPY package.json pnpm-workspace.yaml turbo.json ./
+# Copy workspace config and lockfile
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 
 # Copy all source packages and the API app only (no dashboard)
 COPY packages ./packages
 COPY apps/api ./apps/api
 
-# Install all workspace dependencies
-RUN pnpm install --frozen-lockfile
+# Install dependencies, then explicitly run approved native build scripts.
+RUN pnpm install --frozen-lockfile --ignore-scripts
+RUN pnpm approve-builds --all && pnpm rebuild --pending
 
-# Build the API (TypeScript → JavaScript)
-RUN pnpm --filter api run build
-
-# Generate Prisma Client for the production runtime
-RUN pnpm --filter database exec prisma generate
+# Build the full workspace so shared packages and generated clients are ready
+RUN pnpm build
 
 # ──────────────────────────────────────────────────────────────────────────────
-FROM node:22-alpine AS runner
-RUN npm install -g pnpm
+FROM node:22-bookworm-slim AS runner
+RUN corepack enable && corepack prepare pnpm@11.5.2 --activate
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -41,7 +41,7 @@ EXPOSE 3000
 
 # Health check so DigitalOcean knows when the container is ready
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://localhost:3000/health || exit 1
+  CMD node -e "fetch('http://localhost:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
-# Start the compiled server
-CMD ["pnpm", "start"]
+# Start the server using tsx (handles BAML .ts files at runtime)
+CMD ["npx", "tsx", "src/index.ts"]

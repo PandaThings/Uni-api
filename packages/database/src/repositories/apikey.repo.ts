@@ -35,20 +35,23 @@ export class ApiKeyRepository {
     keyHash: string,
     units: number
   ): Promise<ApiKey | null> {
-    // Find key first to check balance
-    const key = await prisma.apiKey.findUnique({ where: { keyHash } });
-    if (!key || key.computeUnits < units) return null;
+    const [updateResult, updatedKey] = await prisma.$transaction([
+      prisma.apiKey.updateMany({
+        where: {
+          keyHash,
+          computeUnits: { gte: units },
+        },
+        data: {
+          computeUnits: { decrement: units },
+        },
+      }),
+      prisma.apiKey.findUnique({
+        where: { keyHash },
+      }),
+    ]);
 
-    // Atomic decrement - only succeeds if computeUnits is still >= units
-    return prisma.apiKey.update({
-      where: {
-        keyHash,
-        computeUnits: { gte: units },
-      },
-      data: {
-        computeUnits: { decrement: units },
-      },
-    });
+    if (updateResult.count === 0) return null;
+    return updatedKey;
   }
 
   async getComputeUnits(keyHash: string): Promise<number | null> {

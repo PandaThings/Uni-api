@@ -44,9 +44,6 @@ app.route('/v1/keys', keysRoute);
 
 const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
-const key = process.env.ANTHROPIC_API_KEY;
-console.log(`[DEBUG] ANTHROPIC_API_KEY = ${key ? key.substring(0, 20) + '...' : '❌ NOT SET'}`);
-console.log(`[DEBUG] REDIS_URL = ${process.env.REDIS_URL || 'redis://localhost:6379 (default)'}`);
 console.log(`Server is running on http://localhost:${port}`);
 
 serve({

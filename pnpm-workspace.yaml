@@ -1,3 +1,15 @@
 packages:
   - "apps/api"
   - "packages/*"
+
+ignoreScripts: false
+
+onlyBuiltDependencies:
+  - "@boundaryml/baml"
+  - "@prisma/client"
+  - "@prisma/engines"
+  - "@scarf/scarf"
+  - "esbuild"
+  - "prisma"
+  - "protobufjs"
+  - "sharp"

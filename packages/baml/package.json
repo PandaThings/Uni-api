@@ -5,7 +5,7 @@
   "main": "./baml_client/index.ts",
   "types": "./baml_client/index.ts",
   "scripts": {
-    "build": "baml build",
+    "build": "node -e \"console.log('BAML client is generated from checked-in sources; run pnpm --filter @uniai/baml generate when editing baml_src.')\"",
     "generate": "baml generate"
   },
   "dependencies": {
