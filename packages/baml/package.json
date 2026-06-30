@@ -1,0 +1,16 @@
+{
+  "name": "@uniai/baml",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./baml_client/index.ts",
+  "types": "./baml_client/index.ts",
+  "scripts": {
+    "build": "baml build",
+    "generate": "baml generate"
+  },
+  "dependencies": {
+    "@boundaryml/baml": "^0.67.0"
+  },
+  "devDependencies": {
+  }
+}

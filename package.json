@@ -1,0 +1,12 @@
+{
+  "name": "uni-ai-api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter api run dev",
+    "build": "pnpm --filter api run build",
+    "start": "pnpm --filter api run start",
+    "db:push": "pnpm --filter database exec prisma db push",
+    "db:generate": "pnpm --filter database exec prisma generate"
+  }
+}

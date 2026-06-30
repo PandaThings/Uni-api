@@ -1,0 +1,44 @@
+# Caddyfile — Uni AI API Production
+#
+# Caddy automatically provisions Let's Encrypt SSL certificates.
+# Set the DOMAIN_NAME environment variable on your server before starting.
+
+api.{$DOMAIN_NAME:yourdomain.com} {
+
+    # ─── Timeouts ─────────────────────────────────────────────────────────────
+    timeouts {
+        read_body   10s
+        read_header 10s
+        write       90s
+        idle        2m
+    }
+
+    # ─── IP-level Rate Limiting ───────────────────────────────────────────────
+    # Drops spammy connections before they reach Node.js
+    rate_limit {
+        zone dynamic {
+            key        {remote_host}
+            events     100
+            window     1m
+        }
+    }
+
+    # ─── Security Headers ─────────────────────────────────────────────────────
+    header {
+        X-Content-Type-Options   nosniff
+        X-Frame-Options          DENY
+        Referrer-Policy          strict-origin-when-cross-origin
+        -Server
+    }
+
+    # ─── Reverse Proxy to API container ───────────────────────────────────────
+    reverse_proxy api:3000 {
+        health_uri      /health
+        health_interval 10s
+        health_timeout  3s
+
+        header_up X-Real-IP         {remote_host}
+        header_up X-Forwarded-For   {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}

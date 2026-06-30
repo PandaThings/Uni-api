@@ -1,0 +1,20 @@
+# ── Build outputs ────────────────────────────────────────
+node_modules
+dist
+.turbo
+
+# ── Environment variables (NEVER commit these) ───────────
+.env
+.env.*
+.env.local
+
+# ── Prisma ───────────────────────────────────────────────
+.baml/
+
+# ── Logs ─────────────────────────────────────────────────
+*.log
+coverage/
+
+# ── OS files ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db

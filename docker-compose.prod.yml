@@ -1,0 +1,37 @@
+version: '3.8'
+
+# ─── Production Docker Compose ─────────────────────────────────────────────
+# Uses external managed DigitalOcean services for PostgreSQL and Redis.
+# Only the API itself is containerised here.
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    restart: always
+
+  caddy:
+    image: ghcr.io/mholt/caddy-ratelimit:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    restart: always
+
+volumes:
+  caddy_data:
+  caddy_config:
