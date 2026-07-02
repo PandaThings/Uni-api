@@ -54,13 +54,6 @@ queryRoute.post('/', async (c) => {
 
     return c.json({
       answer: response.answer,
-      score: response.score,
-      model: response.model,
-      cost: response.cost,
-      computeUnitsUsed: response.computeUnitsUsed,
-      computeUnitsRemaining: response.computeUnitsRemaining,
-      contextUsed: response.contextUsed,
-      developerInsights: response.developerInsights,
     });
   } catch (error: any) {
     if (error.message === 'INSUFFICIENT_COMPUTE_UNITS') {
