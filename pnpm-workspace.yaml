@@ -1,5 +1,6 @@
 packages:
   - "apps/api"
+  - "apps/web"
   - "packages/*"
 
 allowBuilds:
@@ -22,3 +23,6 @@ onlyBuiltDependencies:
   - "prisma"
   - "protobufjs"
   - "sharp"
+
+overrides:
+  client-only: "link:apps/web/vendor/client-only"

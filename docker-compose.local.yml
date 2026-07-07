@@ -1,0 +1,21 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: uni-ai-local-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: uniai_local
+      POSTGRES_USER: uniai
+      POSTGRES_PASSWORD: uniai_local_password
+    ports:
+      - "55432:5432"
+    volumes:
+      - uni_ai_local_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U uniai -d uniai_local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  uni_ai_local_postgres_data:

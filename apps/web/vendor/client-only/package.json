@@ -1,0 +1,11 @@
+{
+  "name": "client-only",
+  "version": "0.0.1",
+  "main": "index.js",
+  "exports": {
+    ".": {
+      "react-server": "./error.js",
+      "default": "./index.js"
+    }
+  }
+}

@@ -9,6 +9,7 @@ dist
 .turbo
 .pnpm-store
 coverage
+apps/web
 
 .env
 .env.*

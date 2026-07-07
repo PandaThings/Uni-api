@@ -63,3 +63,9 @@ try {
 Use a Uni AI API key that starts with `uni_`.
 
 Do not publish API keys in source code, npm packages, examples, or public repositories.
+
+## API Updates
+
+For API updates and announcements, join our WhatsApp channel:
+
+[https://whatsapp.com/channel/0029Vb8duzaBlHpcmFPV8E2K](https://whatsapp.com/channel/0029Vb8duzaBlHpcmFPV8E2K)

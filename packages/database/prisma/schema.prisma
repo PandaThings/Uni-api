@@ -19,6 +19,7 @@ model User {
 
   projects    Project[]    // Projects they own
   memberships Membership[] // Projects they are a member of
+  webChats    WebChatSession[]
 
   @@map("users")
 }
@@ -110,4 +111,49 @@ model Request {
 
   @@index([projectId])
   @@map("requests")
+}
+
+model WebGuestSession {
+  id           String    @id @default(uuid()) @db.Uuid
+  visitorId    String    @unique
+  messageCount Int       @default(0)
+  dailyLimit   Int       @default(5)
+  quotaResetAt DateTime
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  chats WebChatSession[]
+
+  @@index([quotaResetAt])
+  @@map("web_guest_sessions")
+}
+
+model WebChatSession {
+  id             String    @id @default(uuid()) @db.Uuid
+  guestSessionId String?   @db.Uuid
+  userId         String?
+  title          String    @default("New chat")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  guestSession WebGuestSession? @relation(fields: [guestSessionId], references: [id], onDelete: Cascade)
+  user         User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages     WebChatMessage[]
+
+  @@index([guestSessionId])
+  @@index([userId])
+  @@map("web_chat_sessions")
+}
+
+model WebChatMessage {
+  id        String   @id @default(uuid()) @db.Uuid
+  chatId    String   @db.Uuid
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+
+  chat WebChatSession @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId])
+  @@map("web_chat_messages")
 }
