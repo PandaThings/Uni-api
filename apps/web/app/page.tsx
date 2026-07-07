@@ -3,10 +3,6 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import {
   Bot,
-  ChevronLeft,
-  Menu,
-  MessageSquarePlus,
-  PanelLeftClose,
   Send,
   Sparkles,
   UserRound,
@@ -20,13 +16,6 @@ type Message = {
   content: string;
 };
 
-type Chat = {
-  id: string;
-  title: string;
-  messages: Message[];
-  updatedAt: number;
-};
-
 const starterPrompts = [
   "Review this backend API design.",
   "Help me debug a production deployment issue.",
@@ -34,23 +23,15 @@ const starterPrompts = [
 ];
 
 export default function ChatPage() {
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [activeChatId, setActiveChatId] = useState<string>("");
+  const [messages, setMessages] = useState<Message[]>([]);
   const [prompt, setPrompt] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState("");
   const [remaining, setRemaining] = useState<number | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [isLoadingChats, setIsLoadingChats] = useState(true);
   const messagesRef = useRef<HTMLDivElement>(null);
+  const chatIdRef = useRef(crypto.randomUUID());
 
-  const activeChat = chats.find((chat) => chat.id === activeChatId);
-  const messages = activeChat?.messages ?? [];
-
-  useEffect(() => {
-    setSidebarOpen(window.innerWidth > 860);
-    loadChats();
-  }, []);
+  const isEmpty = messages.length === 0;
 
   useEffect(() => {
     messagesRef.current?.scrollTo({
@@ -71,10 +52,8 @@ export default function ChatPage() {
     setPrompt("");
     setIsSending(true);
 
-    const chatId = activeChatId || createNewChat();
     const userMessage = createMessage("user", content);
-
-    upsertChatMessage(chatId, userMessage, content);
+    setMessages((current) => [...current, userMessage]);
 
     try {
       const response = await fetch("/api/chat", {
@@ -82,7 +61,7 @@ export default function ChatPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ prompt: content, chatId }),
+        body: JSON.stringify({ prompt: content, chatId: chatIdRef.current }),
       });
       const payload = await readJsonResponse(response);
 
@@ -91,8 +70,7 @@ export default function ChatPage() {
       }
 
       const assistantMessage = createMessage("assistant", payload.answer);
-      upsertChatMessage(chatId, assistantMessage);
-      renameChat(chatId, payload.title);
+      setMessages((current) => [...current, assistantMessage]);
       setRemaining(typeof payload.remaining === "number" ? payload.remaining : null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Something went wrong.");
@@ -101,178 +79,32 @@ export default function ChatPage() {
     }
   }
 
-  function createNewChat() {
-    const chat = createChat();
-    setChats((current) => [chat, ...current]);
-    setActiveChatId(chat.id);
-    setError("");
-    return chat.id;
-  }
-
-  async function loadChats() {
-    try {
-      const response = await fetch("/api/chats", {
-        cache: "no-store",
-      });
-      const payload = await readJsonResponse(response);
-
-      if (!response.ok) {
-        throw new Error(payload.message || payload.error || "Could not load chats");
-      }
-
-      if (Array.isArray(payload.chats) && payload.chats.length > 0) {
-        setChats(payload.chats);
-        setActiveChatId(payload.chats[0].id);
-      } else {
-        const chat = createChat();
-        setChats([chat]);
-        setActiveChatId(chat.id);
-      }
-
-      setRemaining(typeof payload.remaining === "number" ? payload.remaining : null);
-    } catch (caught) {
-      const chat = createChat();
-      setChats([chat]);
-      setActiveChatId(chat.id);
-      setError(caught instanceof Error ? caught.message : "Could not load chats.");
-    } finally {
-      setIsLoadingChats(false);
-    }
-  }
-
-  function upsertChatMessage(chatId: string, message: Message, titleSeed?: string) {
-    setChats((current) =>
-      current.map((chat) => {
-        if (chat.id !== chatId) {
-          return chat;
-        }
-
-        const nextMessages = [...chat.messages, message];
-        const title =
-          chat.title === "New chat" && titleSeed ? createTitle(titleSeed) : chat.title;
-
-        return {
-          ...chat,
-          title,
-          messages: nextMessages,
-          updatedAt: Date.now(),
-        };
-      })
-    );
-  }
-
-  function renameChat(chatId: string, title?: string) {
-    if (!title) {
-      return;
-    }
-
-    setChats((current) =>
-      current.map((chat) => (chat.id === chatId ? { ...chat, title } : chat))
-    );
-  }
-
   function submitStarter(value: string) {
     setPrompt(value);
   }
 
   return (
     <main className="shell">
-      <aside className={sidebarOpen ? "sidebar" : "sidebar sidebarClosed"}>
-        <div className="sidebarHeader">
-          <div className="brandMark">U</div>
-          <div>
-            <p className="brandName">Uni AI</p>
-            <p className="brandMeta">Guest workspace</p>
-          </div>
-          <button
-            className="iconButton sidebarToggle"
-            type="button"
-            onClick={() => setSidebarOpen(false)}
-            aria-label="Close sidebar"
-            title="Close sidebar"
-          >
-            <PanelLeftClose size={18} />
-          </button>
-        </div>
-
-        <button className="newChatButton" type="button" onClick={createNewChat}>
-          <MessageSquarePlus size={18} />
-          <span>New chat</span>
-        </button>
-
-        <div className="chatList">
-          {isLoadingChats && <div className="chatListState">Loading chats...</div>}
-          {chats.map((chat) => (
-            <button
-              className={chat.id === activeChatId ? "chatItem activeChatItem" : "chatItem"}
-              key={chat.id}
-              type="button"
-              onClick={() => {
-                setActiveChatId(chat.id);
-                setError("");
-              }}
-            >
-              <span>{chat.title}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="sidebarFooter">
-          <p>Guest access</p>
-          <strong>{remaining === null ? "300" : remaining} messages left today</strong>
-        </div>
-      </aside>
-
-      <section className="chatPanel">
+      <section className={`chatPanel ${isEmpty ? "is-empty" : ""}`}>
         <header className="topbar">
-          {!sidebarOpen && (
-            <button
-              className="iconButton"
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Open sidebar"
-              title="Open sidebar"
-            >
-              <Menu size={19} />
-            </button>
-          )}
-          <button
-            className="mobileBack"
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open chats"
-          >
-            <ChevronLeft size={18} />
-          </button>
+          <div className="brandMark" aria-hidden="true">
+            U
+          </div>
           <div>
-            <p className="eyebrow">Uni AI Web</p>
-            <h1>What are we building today?</h1>
+            <p className="eyebrow">Uni AI</p>
           </div>
           <div className="statusPill">
-            <Sparkles size={16} />
-            <span>Guest mode</span>
+            <span>Guest</span>
+            {remaining !== null && (
+              <span className="remainingBadge">{remaining}</span>
+            )}
           </div>
         </header>
 
         <div className="messages" ref={messagesRef}>
-          {isLoadingChats ? (
+          {isEmpty ? (
             <section className="emptyState">
-              <div className="emptyMark">
-                <Bot size={30} />
-              </div>
-              <h2>Opening your workspace.</h2>
-              <p>Loading guest chats and usage limits.</p>
-            </section>
-          ) : messages.length === 0 ? (
-            <section className="emptyState">
-              <div className="emptyMark">
-                <Bot size={30} />
-              </div>
-              <h2>Start with a technical problem, product idea, or architecture question.</h2>
-              <p>
-                Uni AI is tuned for software reasoning, production planning, and careful
-                implementation guidance.
-              </p>
+              <h1>What can I help you build?</h1>
               <div className="starterGrid">
                 {starterPrompts.map((value) => (
                   <button key={value} type="button" onClick={() => submitStarter(value)}>
@@ -285,7 +117,11 @@ export default function ChatPage() {
             messages.map((message) => (
               <article className={`message ${message.role}`} key={message.id}>
                 <div className="avatar" aria-hidden="true">
-                  {message.role === "assistant" ? <Bot size={18} /> : <UserRound size={18} />}
+                  {message.role === "assistant" ? (
+                    <Bot size={20} strokeWidth={2} />
+                  ) : (
+                    <UserRound size={20} strokeWidth={2} />
+                  )}
                 </div>
                 <div className="messageBody">
                   <p className="messageAuthor">
@@ -306,7 +142,7 @@ export default function ChatPage() {
           {isSending && (
             <article className="message assistant">
               <div className="avatar" aria-hidden="true">
-                <Bot size={18} />
+                <Bot size={20} strokeWidth={2} />
               </div>
               <div className="messageBody">
                 <p className="messageAuthor">Uni AI</p>
@@ -326,7 +162,7 @@ export default function ChatPage() {
             <textarea
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
-              placeholder="Ask Uni AI for architecture, debugging, code review, or implementation planning..."
+              placeholder="Message Uni AI..."
               rows={1}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
@@ -342,25 +178,16 @@ export default function ChatPage() {
               aria-label="Send message"
               title="Send message"
             >
-              <Send size={18} />
+              <Send size={18} strokeWidth={2} />
             </button>
           </form>
           <p className="finePrint">
-            Guest chats are saved to this guest workspace.
+            Guest session &mdash; resets on refresh.
           </p>
         </footer>
       </section>
     </main>
   );
-}
-
-function createChat(): Chat {
-  return {
-    id: crypto.randomUUID(),
-    title: "New chat",
-    messages: [],
-    updatedAt: Date.now(),
-  };
 }
 
 function createMessage(role: Role, content: string): Message {
@@ -369,10 +196,6 @@ function createMessage(role: Role, content: string): Message {
     role,
     content,
   };
-}
-
-function createTitle(prompt: string) {
-  return prompt.length > 42 ? `${prompt.slice(0, 39)}...` : prompt;
 }
 
 async function readJsonResponse(response: Response) {
@@ -395,41 +218,91 @@ async function readJsonResponse(response: Response) {
 }
 
 function MarkdownMessage({ content }: { content: string }) {
-  const blocks = content.split(/\n{2,}/).map((block) => block.trim()).filter(Boolean);
+  // Split the content by code blocks: ```language\n code \n```
+  const parts = content.split(/(```[\s\S]*?```)/g);
 
   return (
     <div className="markdownMessage">
-      {blocks.map((block, index) => {
-        const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
-        const firstLine = lines[0] ?? "";
+      {parts.map((part, index) => {
+        if (!part.trim()) return null;
 
-        if (firstLine.startsWith("## ")) {
-          return <h3 key={index}>{renderInlineMarkdown(firstLine.slice(3))}</h3>;
-        }
+        // Check if this part is a code block
+        if (part.startsWith("```") && part.endsWith("```")) {
+          const lines = part.split("\n");
+          // Remove the first line (```language) and the last line (```)
+          const code = lines.slice(1, -1).join("\n");
+          const language = lines[0].slice(3).trim();
 
-        if (firstLine.startsWith("# ")) {
-          return <h2 key={index}>{renderInlineMarkdown(firstLine.slice(2))}</h2>;
-        }
-
-        if (lines.every((line) => line.startsWith("- "))) {
           return (
-            <ul key={index}>
-              {lines.map((line, lineIndex) => (
-                <li key={lineIndex}>{renderInlineMarkdown(line.slice(2))}</li>
-              ))}
-            </ul>
+            <div key={index} className="codeBlockWrapper">
+              {language && <div className="codeLanguage">{language}</div>}
+              <pre className="codeBlock">
+                <code>{code}</code>
+              </pre>
+            </div>
           );
         }
 
+        // Parse regular text line by line to support headings anywhere
+        const lines = part.split("\n");
+        const elements: React.ReactNode[] = [];
+        let currentParagraph: React.ReactNode[] = [];
+        let currentList: React.ReactNode[] = [];
+
+        const flushParagraph = () => {
+          if (currentParagraph.length > 0) {
+            elements.push(<p key={`p-${elements.length}`}>{currentParagraph}</p>);
+            currentParagraph = [];
+          }
+        };
+
+        const flushList = () => {
+          if (currentList.length > 0) {
+            elements.push(<ul key={`ul-${elements.length}`}>{currentList}</ul>);
+            currentList = [];
+          }
+        };
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+
+          if (!line) {
+            flushParagraph();
+            flushList();
+            continue;
+          }
+
+          if (line.startsWith("### ")) {
+            flushParagraph();
+            flushList();
+            elements.push(<h4 key={`h4-${elements.length}`}>{renderInlineMarkdown(line.slice(4))}</h4>);
+          } else if (line.startsWith("## ")) {
+            flushParagraph();
+            flushList();
+            elements.push(<h3 key={`h3-${elements.length}`}>{renderInlineMarkdown(line.slice(3))}</h3>);
+          } else if (line.startsWith("# ")) {
+            flushParagraph();
+            flushList();
+            elements.push(<h2 key={`h2-${elements.length}`}>{renderInlineMarkdown(line.slice(2))}</h2>);
+          } else if (line.startsWith("- ") || line.startsWith("* ")) {
+            flushParagraph();
+            currentList.push(<li key={`li-${currentList.length}`}>{renderInlineMarkdown(line.slice(2))}</li>);
+          } else {
+            flushList();
+            if (currentParagraph.length > 0) {
+              currentParagraph.push(<br key={`br-${i}`} />);
+            }
+            currentParagraph.push(<span key={`span-${i}`}>{renderInlineMarkdown(line)}</span>);
+          }
+        }
+
+        flushParagraph();
+        flushList();
+
         return (
-          <p key={index}>
-            {lines.map((line, lineIndex) => (
-              <span key={lineIndex}>
-                {renderInlineMarkdown(line)}
-                {lineIndex < lines.length - 1 ? <br /> : null}
-              </span>
-            ))}
-          </p>
+          <div key={index} className="markdownContent">
+            {elements}
+          </div>
         );
       })}
     </div>
@@ -437,13 +310,30 @@ function MarkdownMessage({ content }: { content: string }) {
 }
 
 function renderInlineMarkdown(text: string) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  // Split by bold (**bold**)
+  const boldParts = text.split(/(\*\*[^*]+\*\*)/g);
 
-  return parts.map((part, index) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={index}>{part.slice(2, -2)}</strong>;
+  return boldParts.map((bPart, bIndex) => {
+    if (bPart.startsWith("**") && bPart.endsWith("**")) {
+      return <strong key={bIndex}>{bPart.slice(2, -2)}</strong>;
     }
 
-    return <span key={index}>{part}</span>;
+    // Inside non-bold text, split by inline code (`code`)
+    const codeParts = bPart.split(/(`[^`]+`)/g);
+
+    return (
+      <span key={bIndex}>
+        {codeParts.map((cPart, cIndex) => {
+          if (cPart.startsWith("`") && cPart.endsWith("`")) {
+            return (
+              <code className="inlineCode" key={cIndex}>
+                {cPart.slice(1, -1)}
+              </code>
+            );
+          }
+          return <span key={cIndex}>{cPart}</span>;
+        })}
+      </span>
+    );
   });
 }
